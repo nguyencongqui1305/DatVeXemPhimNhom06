@@ -217,6 +217,12 @@ body {
 .age-T16 { background: #e67e22; color: #fff; }
 .age-T18 { background: #e74c3c; color: #fff; }
 
+/* Fix: trong bảng admin, badge không cần position absolute */
+.table-dark-utc .movie-age-badge {
+  position: static;
+  display: inline-block;
+}
+
 .movie-card-body {
   padding: 16px;
   flex: 1;

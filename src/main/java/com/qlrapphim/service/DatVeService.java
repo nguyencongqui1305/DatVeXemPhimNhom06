@@ -61,8 +61,35 @@ public class DatVeService {
             throw new BusinessException("Suất chiếu này hiện không còn mở bán");
         }
 
-        KhachHang khachHang = khachHangRepository.findById(maKh)
-                .orElseThrow(() -> new ResourceNotFoundException("Khách hàng", "MA_KH", maKh));
+        KhachHang khachHang;
+        if (maKh != null && !maKh.isBlank()) {
+            khachHang = khachHangRepository.findById(maKh)
+                    .orElseThrow(() -> new ResourceNotFoundException("Khách hàng", "MA_KH", maKh));
+        } else if (maNv != null && !maNv.isBlank()) {
+            // NhanVien/QuanLy đặt vé - tìm KH theo email NV, nếu ko có thì tạo mới
+            NhanVien nv = nhanVienRepository.findById(maNv)
+                    .orElseThrow(() -> new ResourceNotFoundException("Nhân viên", "MA_NV", maNv));
+            khachHang = khachHangRepository.findByEmail(nv.getEmail()).orElse(null);
+            if (khachHang == null) {
+                long cnt = khachHangRepository.count() + 1;
+                String newMaKh = String.format("KH%04d", cnt);
+                while (khachHangRepository.existsById(newMaKh)) {
+                    cnt++;
+                    newMaKh = String.format("KH%04d", cnt);
+                }
+                khachHang = KhachHang.builder()
+                        .maKh(newMaKh)
+                        .hoTen(nv.getHoTen())
+                        .email(nv.getEmail())
+                        .sdt("0000000000")
+                        .matKhau(nv.getMatKhau())
+                        .ngayDangKy(java.time.LocalDate.now())
+                        .build();
+                khachHang = khachHangRepository.save(khachHang);
+            }
+        } else {
+            throw new BusinessException("Không xác định được khách hàng đặt vé");
+        }
 
         NhanVien nhanVien = null;
         if (maNv != null && !maNv.isBlank()) {

@@ -265,9 +265,6 @@
     font-family: inherit;
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
     transition: border-color 0.2s;
 }
 #rapSelectStyled:focus {
@@ -328,22 +325,22 @@
                             <!-- Status ribbon -->
                             <div th:if="${phim.trangThai == 'Đang chiếu'}"
                                  style="position:absolute;top:12px;left:0;background:linear-gradient(90deg,#e50914,#b20710);color:#fff;font-size:0.7rem;font-weight:700;padding:5px 12px 5px 10px;border-radius:0 20px 20px 0;letter-spacing:1px">
-                                ● ĐANG CHIẾU
+                                &#9679; ĐANG CHIẾU
                             </div>
                             <div th:if="${phim.trangThai == 'Sắp chiếu'}"
                                  style="position:absolute;top:12px;left:0;background:linear-gradient(90deg,#f5c518,#d4a017);color:#000;font-size:0.7rem;font-weight:700;padding:5px 12px 5px 10px;border-radius:0 20px 20px 0;letter-spacing:1px">
-                                ⏰ SẮP CHIẾU
+                                &#9200; SẮP CHIẾU
                             </div>
                         </div>
                     </div>
 
                     <!-- INFO -->
                     <div class="col-md-9 col-lg-10">
-                        <!-- Age rating + title -->
-                        <div class="d-flex align-items-center gap-10 flex-wrap mb-2" style="gap:10px">
+                        <!-- Age rating + genres -->
+                        <div class="d-flex align-items-center flex-wrap mb-2" style="gap:10px">
                             <span th:if="${phim.doTuoi}"
                                   class="movie-age-badge"
-                                  th:class="'movie-age-badge age-' + ${phim.doTuoi}"
+                                  th:classappend="${'age-' + phim.doTuoi}"
                                   th:text="${phim.doTuoi}"
                                   style="position:relative;top:0;right:0;font-size:0.88rem;padding:6px 14px"></span>
                             <div class="genre-badges" style="margin:0">
@@ -371,7 +368,7 @@
                             <div class="info-meta-item">
                                 <i class="fas fa-circle" style="font-size:0.5rem"></i>
                                 <span class="badge-status"
-                                      th:class="${phim.trangThai == 'Đang chiếu' ? 'badge-status badge-success' : (phim.trangThai == 'Sắp chiếu' ? 'badge-status badge-warning' : 'badge-status badge-info')}"
+                                      th:classappend="${phim.trangThai == 'Đang chiếu' ? 'badge-success' : (phim.trangThai == 'Sắp chiếu' ? 'badge-warning' : 'badge-info')}"
                                       th:text="${phim.trangThai}"></span>
                             </div>
                         </div>
@@ -406,21 +403,13 @@
                          class="cinema-tab-btn"
                          th:data-rap-id="${rap.maRap}"
                          th:data-rap-ten="${rap.tenRap}"
-                         th:onclick="'selectCinema(' + ${rap.maRap} + ', this)'">
+                         th:attr="onclick='selectCinema(\'' + ${rap.maRap} + '\', this)'">
                         <div class="cinema-dot"></div>
                         <div>
                             <div style="font-weight:600" th:text="${rap.tenRap}"></div>
                             <div style="font-size:0.75rem;opacity:0.7;margin-top:1px" th:text="${rap.diaChi}"></div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Fallback: also show a select for mobile -->
-                <div style="display:none" id="rapSelectWrapper">
-                    <select id="rapSelect" style="display:none">
-                        <option value="">-- Chọn rạp --</option>
-                        <option th:each="rap : ${danhSachRap}" th:value="${rap.maRap}" th:text="${rap.tenRap}"></option>
-                    </select>
                 </div>
             </div>
 
@@ -484,10 +473,10 @@
 </div>
 </main>
 <th:block layout:fragment="scripts">
-<script>
-const PHIM_ID = document.getElementById('maPhim').value;
-let selectedRapId = null;
-let selectedDate = null;
+<script th:inline="none">
+var PHIM_ID = document.getElementById('maPhim').value;
+var selectedRapId = null;
+var selectedDate = null;
 
 // --- Cinema tab selection ---
 function selectCinema(rapId, el) {
@@ -495,7 +484,7 @@ function selectCinema(rapId, el) {
     document.getElementById('maRapHidden').value = rapId;
 
     // Update tab UI
-    document.querySelectorAll('.cinema-tab-btn').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.cinema-tab-btn').forEach(function(t) { t.classList.remove('active'); });
     el.classList.add('active');
 
     // Show date section
@@ -507,8 +496,8 @@ function selectCinema(rapId, el) {
     generateDays();
 
     // Auto-load today
-    const today = new Date();
-    const dateStr = today.getFullYear() + '-'
+    var today = new Date();
+    var dateStr = today.getFullYear() + '-'
         + String(today.getMonth()+1).padStart(2,'0') + '-'
         + String(today.getDate()).padStart(2,'0');
     selectedDate = dateStr;
@@ -517,28 +506,43 @@ function selectCinema(rapId, el) {
 
 // --- Generate 7-day date pills ---
 function generateDays() {
-    const picker = document.getElementById('datePicker');
+    var picker = document.getElementById('datePicker');
     if (!picker) return;
     picker.innerHTML = '';
-    const days = ['CN','T2','T3','T4','T5','T6','T7'];
-    const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+    var dayNames = ['CN','T2','T3','T4','T5','T6','T7'];
 
-    for (let i = 0; i < 7; i++) {
-        const d = new Date();
+    for (var i = 0; i < 7; i++) {
+        var d = new Date();
         d.setDate(d.getDate() + i);
-        const y = d.getFullYear();
-        const mo = d.getMonth();
-        const day = d.getDate();
-        const dateStr = `${y}-${String(mo+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        var y = d.getFullYear();
+        var mo = d.getMonth();
+        var day = d.getDate();
+        var dateStr = y + '-' + String(mo+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
 
-        const pill = document.createElement('div');
+        var pill = document.createElement('div');
         pill.className = 'date-pill-lg' + (i === 0 ? ' active' : '');
         pill.dataset.ngay = dateStr;
-        pill.innerHTML = `<div class="day-num">${day}</div>
-                          <div class="day-label">${i === 0 ? 'Hôm nay' : (i === 1 ? 'Ngày mai' : days[d.getDay()])}</div>
-                          <div class="day-label" style="font-size:0.65rem;opacity:0.6;margin-top:1px">Th${months[mo]}</div>`;
+
+        var dayNumDiv = document.createElement('div');
+        dayNumDiv.className = 'day-num';
+        dayNumDiv.textContent = day;
+        pill.appendChild(dayNumDiv);
+
+        var dayLabelDiv = document.createElement('div');
+        dayLabelDiv.className = 'day-label';
+        if (i === 0) dayLabelDiv.textContent = 'Hôm nay';
+        else if (i === 1) dayLabelDiv.textContent = 'Ngày mai';
+        else dayLabelDiv.textContent = dayNames[d.getDay()];
+        pill.appendChild(dayLabelDiv);
+
+        var monthDiv = document.createElement('div');
+        monthDiv.className = 'day-label';
+        monthDiv.style.cssText = 'font-size:0.65rem;opacity:0.6;margin-top:1px';
+        monthDiv.textContent = 'Th' + String(mo+1).padStart(2,'0');
+        pill.appendChild(monthDiv);
+
         pill.addEventListener('click', function() {
-            document.querySelectorAll('.date-pill-lg').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.date-pill-lg').forEach(function(p) { p.classList.remove('active'); });
             this.classList.add('active');
             selectedDate = this.dataset.ngay;
             if (selectedRapId) loadSchedule(this.dataset.ngay);
@@ -549,37 +553,50 @@ function generateDays() {
 
 // --- Load showtimes via AJAX ---
 function loadSchedule(ngay) {
-    const container = document.getElementById('showtimeContainer');
-    const section = document.getElementById('showtimeSection');
-    const noMsg = document.getElementById('noShowtimeMsg');
+    var container = document.getElementById('showtimeContainer');
+    var section = document.getElementById('showtimeSection');
+    var noMsg = document.getElementById('noShowtimeMsg');
 
     section.style.display = 'block';
     noMsg.style.display = 'none';
     container.innerHTML = '<div style="display:flex;align-items:center;gap:10px;color:#555;font-size:0.88rem"><div style="width:20px;height:20px;border:2px solid #333;border-top-color:#e50914;border-radius:50%;animation:spin 0.8s linear infinite"></div>Đang tải lịch chiếu...</div>';
 
-    fetch(`/phim/lich-chieu?maPhim=${PHIM_ID}&maRap=${selectedRapId}&ngay=${ngay}`)
-        .then(r => r.json())
-        .then(data => {
+    fetch('/phim/lich-chieu?maPhim=' + PHIM_ID + '&maRap=' + selectedRapId + '&ngay=' + ngay)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             container.innerHTML = '';
             if (!data || data.length === 0) {
                 section.style.display = 'none';
                 noMsg.style.display = 'block';
                 return;
             }
-            data.forEach(lc => {
-                const card = document.createElement('a');
-                card.href = `/dat-ve/chon-ghe/${lc.maLich}`;
+            data.forEach(function(lc) {
+                var card = document.createElement('a');
+                card.href = '/dat-ve/chon-ghe/' + lc.maLich;
                 card.className = 'showtime-card';
-                const time = lc.thoiGianBatDau ? lc.thoiGianBatDau.substring(11,16) : '--:--';
-                const price = lc.giaVe ? lc.giaVe.toLocaleString('vi-VN') + '₫' : '';
-                const phong = lc.tenPhong || '';
-                card.innerHTML = `<div class="st-time">${time}</div>
-                                  <div class="st-type">${phong}</div>
-                                  <div class="st-price">${price}</div>`;
+                var time = lc.thoiGianBatDau ? lc.thoiGianBatDau.substring(11,16) : '--:--';
+                var price = lc.giaVe ? lc.giaVe.toLocaleString('vi-VN') + '\u20AB' : '';
+                var phong = lc.tenPhong || '';
+
+                var timeDiv = document.createElement('div');
+                timeDiv.className = 'st-time';
+                timeDiv.textContent = time;
+                card.appendChild(timeDiv);
+
+                var typeDiv = document.createElement('div');
+                typeDiv.className = 'st-type';
+                typeDiv.textContent = phong;
+                card.appendChild(typeDiv);
+
+                var priceDiv = document.createElement('div');
+                priceDiv.className = 'st-price';
+                priceDiv.textContent = price;
+                card.appendChild(priceDiv);
+
                 container.appendChild(card);
             });
         })
-        .catch(() => {
+        .catch(function() {
             container.innerHTML = '<p style="color:#e50914;font-size:0.85rem"><i class="fas fa-exclamation-circle me-1"></i>Lỗi tải lịch chiếu, vui lòng thử lại</p>';
         });
 }

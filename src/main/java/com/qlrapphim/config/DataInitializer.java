@@ -2,6 +2,7 @@ package com.qlrapphim.config;
 
 import com.qlrapphim.entity.*;
 import com.qlrapphim.repository.*;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -36,6 +37,7 @@ public class DataInitializer implements ApplicationRunner {
     private final GheRepository gheRepository;
     private final LichChieuRepository lichChieuRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DataSource dataSource;
 
     @Override
     @Transactional
@@ -44,6 +46,8 @@ public class DataInitializer implements ApplicationRunner {
             log.info("Dữ liệu đã tồn tại, bỏ qua khởi tạo.");
             // Vẫn kiểm tra và tạo ghế cho phòng nào đang thiếu
             generateMissingSeats();
+            // Fix phim chưa có độ tuổi - dùng JDBC riêng để tránh conflict transaction
+            fixMissingDoTuoi();
             return;
         }
         log.info("DB trống — đang khởi tạo dữ liệu mẫu...");
@@ -78,6 +82,38 @@ public class DataInitializer implements ApplicationRunner {
             log.info("Đã tạo ghế cho {} phòng chiếu thiếu ghế.", totalCreated);
         } else {
             log.info("Tất cả phòng chiếu đã có ghế.");
+        }
+    }
+
+    /**
+     * Auto-fix: đảm bảo cột DO_TUOI tồn tại và set giá trị mặc định.
+     * Dùng raw JDBC để tránh conflict với @Transactional của JPA.
+     */
+    private void fixMissingDoTuoi() {
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(true);
+
+            // Bước 1: Đảm bảo cột DO_TUOI tồn tại
+            try (java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute("ALTER TABLE QL_RAP_PHIM.PHIM ADD (DO_TUOI VARCHAR2(10 CHAR))");
+                log.info("Đã tạo cột DO_TUOI trong bảng PHIM.");
+            } catch (java.sql.SQLException e) {
+                // ORA-01430: column being added already exists -> OK
+                log.debug("Cột DO_TUOI đã tồn tại (OK).");
+            }
+
+            // Bước 2: UPDATE tất cả phim chưa có doTuoi
+            try (java.sql.Statement stmt = conn.createStatement()) {
+                int updated = stmt.executeUpdate(
+                    "UPDATE QL_RAP_PHIM.PHIM SET DO_TUOI = 'P' WHERE DO_TUOI IS NULL");
+                if (updated > 0) {
+                    log.info("Đã fix doTuoi='P' cho {} phim bằng JDBC.", updated);
+                } else {
+                    log.info("Tất cả phim đã có doTuoi.");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Lỗi khi fix doTuoi: {}", e.getMessage());
         }
     }
 

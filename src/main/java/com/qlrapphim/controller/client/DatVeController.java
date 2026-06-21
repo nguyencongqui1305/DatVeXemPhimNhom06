@@ -76,7 +76,7 @@ public class DatVeController {
      * Giu ghe tam (duoc goi qua AJAX khi khach chon ghe va bam "Tiep tuc")
      */
     @PostMapping("/giu-ghe")
-    @PreAuthorize("hasRole('KHACH_HANG')")
+    @PreAuthorize("isAuthenticated()")
     @ResponseBody
     public Map<String, Object> giuGhe(
             @RequestParam String maLich,
@@ -138,7 +138,7 @@ public class DatVeController {
      * Xu ly dat ve cuoi cung - POST from xac nhan form
      */
     @PostMapping("/thanh-toan")
-    @PreAuthorize("hasRole('KHACH_HANG')")
+    @PreAuthorize("isAuthenticated()")
     public String thanhToan(
             @Valid @ModelAttribute("datVeRequest") DatVeRequestDTO request,
             BindingResult bindingResult,
@@ -151,7 +151,9 @@ public class DatVeController {
         }
 
         try {
-            DatVeResponseDTO response = datVeService.datVe(request, currentUser.getUserId(), null);
+            String maKh = "KHACH_HANG".equals(currentUser.getUserType()) ? currentUser.getUserId() : null;
+            String maNv = !"KHACH_HANG".equals(currentUser.getUserType()) ? currentUser.getUserId() : null;
+            DatVeResponseDTO response = datVeService.datVe(request, maKh, maNv);
             redirectAttributes.addFlashAttribute("datVeResult", response);
             return "redirect:/dat-ve/ket-qua/" + response.getMaDat();
         } catch (Exception e) {
@@ -174,9 +176,10 @@ public class DatVeController {
         DatVe datVe = datVeService.findById(maDat)
                 .orElseThrow(() -> new ResourceNotFoundException("Đặt vé", "MA_DAT", maDat));
 
-        // Chi xem ket qua cua chinh minh
-        if (!datVe.getKhachHang().getMaKh().equals(currentUser.getUserId())
-                && !"NHAN_VIEN".equals(currentUser.getUserType())) {
+        // Chi xem ket qua cua chinh minh (hoac la NV/QL)
+        boolean isStaff = "NHAN_VIEN".equals(currentUser.getUserType());
+        boolean isOwner = datVe.getKhachHang().getMaKh().equals(currentUser.getUserId());
+        if (!isOwner && !isStaff) {
             return "redirect:/403";
         }
 
@@ -189,7 +192,7 @@ public class DatVeController {
      * Lich su dat ve cua khach hang - ho tro filter theo trang thai
      */
     @GetMapping("/lich-su")
-    @PreAuthorize("hasRole('KHACH_HANG')")
+    @PreAuthorize("isAuthenticated()")
     public String lichSu(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @RequestParam(required = false) String trangThai,
@@ -213,7 +216,7 @@ public class DatVeController {
      * Huy dat ve
      */
     @PostMapping("/huy/{maDat}")
-    @PreAuthorize("hasRole('KHACH_HANG')")
+    @PreAuthorize("isAuthenticated()")
     public String huyDatVe(
             @PathVariable String maDat,
             @AuthenticationPrincipal UserPrincipal currentUser,
